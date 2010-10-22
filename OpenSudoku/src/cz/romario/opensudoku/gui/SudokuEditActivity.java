@@ -130,13 +130,18 @@ public class SudokuEditActivity extends Activity {
             return;
         }
         
-    	if (mSudokuID != 0) {
-    		// existing sudoku, read it from database
-    		mGame = mDatabase.getSudoku(mSudokuID);
-    		mGame.getCells().markAllCellsAsEditable();
-    	} else {
-    		mGame = SudokuGame.createEmptyGame();
-    	}
+        if (savedInstanceState != null) {
+        	mGame = new SudokuGame();
+        	mGame.restoreState(savedInstanceState);
+        } else {
+        	if (mSudokuID != 0) {
+        		// existing sudoku, read it from database
+        		mGame = mDatabase.getSudoku(mSudokuID);
+        		mGame.getCells().markAllCellsAsEditable();
+        	} else {
+        		mGame = SudokuGame.createEmptyGame();
+        	}
+        }
         mBoard.setGame(mGame);
         
         mInputMethods = (IMControlPanel)findViewById(R.id.input_methods);
@@ -189,6 +194,8 @@ public class SudokuEditActivity extends Activity {
 	@Override
 	protected void onSaveInstanceState(Bundle outState) {
 		super.onSaveInstanceState(outState);
+		
+		mGame.saveState(outState);
 	}
 	
 	@Override

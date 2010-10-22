@@ -40,12 +40,6 @@ public class CellNote {
 	public CellNote() {
 		mNotedNumbers = Collections.unmodifiableSet(new HashSet<Integer>());
 	}
-
-	public CellNote(int number) {
-		Set<Integer> notedNumbers = new HashSet<Integer>();
-		notedNumbers.add(number);
-		mNotedNumbers = Collections.unmodifiableSet(notedNumbers);
-	}
 	
 	private CellNote(Set<Integer> notedNumbers) {
 		mNotedNumbers = Collections.unmodifiableSet(notedNumbers);

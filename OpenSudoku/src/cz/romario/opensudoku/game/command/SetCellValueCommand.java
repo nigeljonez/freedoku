@@ -22,58 +22,51 @@ package cz.romario.opensudoku.game.command;
 
 import android.os.Bundle;
 import cz.romario.opensudoku.game.Cell;
-import cz.romario.opensudoku.game.SudokuGame;
 
-public class SetCellValueCommand implements Command {
+public class SetCellValueCommand extends AbstractCellCommand {
 
-	private Cell mCell;
+	private int mCellRow;
+	private int mCellColumn;
 	private int mValue;
 	private int mOldValue;
+	
+	public SetCellValueCommand(Cell cell, int value) {
+		mCellRow = cell.getRowIndex();
+		mCellColumn = cell.getColumnIndex();
+		mValue = value;
+	}
 	
 	SetCellValueCommand() {
 		
 	}
-	
-	public SetCellValueCommand(Cell cell, int value) {
-		if (cell == null) {
-			throw new IllegalArgumentException("Cell cannot be null.");
-		}
-		if (value < 0 || value > 9) {
-			throw new IllegalArgumentException("Value must be between 0-9.");
-		}
-
-		mCell = cell;
-		mValue = value;
-	}
-	
-	@Override
-	public void execute() {
-		mOldValue = mCell.getValue();
-		mCell.setValue(mValue);
-	}
 
 	@Override
-	public void undo() {
-		mCell.setValue(mOldValue);
-		mCell.select();
-	}
-
-	@Override
-	public void restoreState(Bundle state, SudokuGame game) {
-		int rowIndex = state.getInt("rowIndex");
-		int colIndex = state.getInt("colIndex");
-		mCell = game.getCells().getCell(rowIndex, colIndex);
-	
-		mValue = state.getInt("value");
-		mOldValue = state.getInt("oldValue");
-	}
-
-	@Override
-	public void saveState(Bundle outState) {
-		outState.putInt("rowIndex", mCell.getRowIndex());
-		outState.putInt("colIndex", mCell.getColumnIndex());
+	void saveState(Bundle outState) {
+		outState.putInt("cellRow", mCellRow);
+		outState.putInt("cellColumn", mCellColumn);
 		outState.putInt("value", mValue);
 		outState.putInt("oldValue", mOldValue);
+	}
+
+	@Override
+	void restoreState(Bundle inState) {
+		mCellRow = inState.getInt("cellRow");
+		mCellColumn = inState.getInt("cellColumn");
+		mValue = inState.getInt("value");
+		mOldValue = inState.getInt("oldValue");
+	}
+	
+	@Override
+	void execute() {
+		Cell cell = getCells().getCell(mCellRow, mCellColumn);
+		mOldValue = cell.getValue();
+		cell.setValue(mValue);
+	}
+
+	@Override
+	void undo() {
+		Cell cell = getCells().getCell(mCellRow, mCellColumn);
+		cell.setValue(mOldValue);
 	}
 
 }

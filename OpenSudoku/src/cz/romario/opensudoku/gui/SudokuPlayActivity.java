@@ -125,13 +125,15 @@ public class SudokuPlayActivity extends Activity{
         mGuiHandler = new Handler();
         
         // create sudoku game instance
-    	mSudokuGameID = getIntent().getLongExtra(EXTRA_SUDOKU_ID, 0);
-    	mSudokuGame = mDatabase.getSudoku(mSudokuGameID);
-        
-        if (savedInstanceState != null) {
+        if (savedInstanceState == null) {
+        	// activity runs for the first time, read game from database
+        	mSudokuGameID = getIntent().getLongExtra(EXTRA_SUDOKU_ID, 0);
+        	mSudokuGame = mDatabase.getSudoku(mSudokuGameID);
+        } else {
         	// activity has been running before, restore its state
+        	mSudokuGame = new SudokuGame();
+        	mSudokuGame.restoreState(savedInstanceState);
         	mGameTimer.restoreState(savedInstanceState);
-        	mSudokuGame.getCommandInvoker().restoreState(savedInstanceState);
         }
         
         if (mSudokuGame.getState() == SudokuGame.GAME_STATE_NOT_STARTED) {
@@ -225,10 +227,6 @@ public class SudokuPlayActivity extends Activity{
     protected void onPause() {
     	super.onPause();
 		
-    	if (mSudokuGame.getState() == SudokuGame.GAME_STATE_PLAYING) {
-			mSudokuGame.pause();
-		}
-    	
     	// we will save game to the database as we might not be able to get back
 		mDatabase.updateSudoku(mSudokuGame);
 		
@@ -249,9 +247,13 @@ public class SudokuPlayActivity extends Activity{
     	super.onSaveInstanceState(outState);
 		
     	mGameTimer.stop();
-    	mGameTimer.saveState(outState);
     	
-    	mSudokuGame.getCommandInvoker().saveState(outState);
+    	if (mSudokuGame.getState() == SudokuGame.GAME_STATE_PLAYING) {
+			mSudokuGame.pause();
+		}
+
+    	mSudokuGame.saveState(outState);
+    	mGameTimer.saveState(outState);
     }
     
 	@Override

@@ -48,7 +48,7 @@ public class Cell {
 	/**
 	 * Creates empty editable cell.
 	 */
-	Cell() {
+	public Cell() {
 		this (0, new CellNote(), true, true);
 	}
 	
@@ -56,7 +56,7 @@ public class Cell {
 	 * Creates empty editable cell containing given value.
 	 * @param value Value of the cell.
 	 */
-	Cell(int value) {
+	public Cell(int value) {
 		this(value, new CellNote(), true, true);
 	}
 	
@@ -150,7 +150,7 @@ public class Cell {
 			throw new IllegalArgumentException("Value must be between 0-9.");
 		}
 		mValue = value;
-		onChange(CellCollection.CHANGE_TYPE_VALUE);
+		onChange();
 	}
 
 	/**
@@ -179,7 +179,7 @@ public class Cell {
 	 */
 	public void setNote(CellNote note) {
 		mNote = note;
-		onChange(CellCollection.CHANGE_TYPE_NOTE);
+		onChange();
 	}
 	
 	/**
@@ -196,7 +196,7 @@ public class Cell {
 	 */
 	public void setEditable(Boolean editable) {
 		mEditable = editable;
-		onChange(CellCollection.CHANGE_TYPE_EDITABLE);
+		onChange();
 	}
 	
 	/**
@@ -206,8 +206,7 @@ public class Cell {
 	 */
 	public void setValid(Boolean valid) {
 		mValid = valid;
-		// TODO: valid pujde pryc
-		//onChange();
+		onChange();
 	}
 
 	/**
@@ -217,14 +216,6 @@ public class Cell {
 	 */
 	public boolean isValid() {
 		return mValid;
-	}
-	
-	public void select() {
-		synchronized (mCellCollectionLock) {
-			if (mCellCollection != null) {
-				mCellCollection.setSelectedCell(this);
-			}
-		}
 	}
 	
 	
@@ -282,11 +273,12 @@ public class Cell {
 	/**
 	 * Notify CellCollection that something has changed.
 	 */
-	private void onChange(int changeType) {
+	private void onChange() {
 		synchronized (mCellCollectionLock) {
 			if (mCellCollection != null) {
-				mCellCollection.onChange(changeType, this);
+				mCellCollection.onChange();
 			}
+			
 		}
 	}
 }

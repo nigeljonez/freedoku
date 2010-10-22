@@ -31,11 +31,10 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import cz.romario.opensudoku.R;
 import cz.romario.opensudoku.game.Cell;
-import cz.romario.opensudoku.game.CellCollection;
 import cz.romario.opensudoku.game.SudokuGame;
-import cz.romario.opensudoku.game.CellCollection.OnChangeListener;
 import cz.romario.opensudoku.gui.HintsQueue;
 import cz.romario.opensudoku.gui.SudokuBoardView;
+import cz.romario.opensudoku.gui.SudokuBoardView.OnCellSelectedListener;
 import cz.romario.opensudoku.gui.SudokuBoardView.OnCellTappedListener;
 
 /**
@@ -70,8 +69,9 @@ public class IMControlPanel extends LinearLayout {
 	public void initialize(SudokuBoardView board, SudokuGame game, HintsQueue hintsQueue) {
 		mBoard = board;
 		mBoard.setOnCellTappedListener(mOnCellTapListener);
+		mBoard.setOnCellSelectedListener(mOnCellSelected);
+
 		mGame = game;
-		mGame.getCells().addOnChangeListener(CellCollection.CHANGE_TYPE_SELECTION, mOnCellSelected);
 		mHintsQueue = hintsQueue;
 		
 		createInputMethods();
@@ -252,9 +252,9 @@ public class IMControlPanel extends LinearLayout {
 		}
 	};
 	
-	private OnChangeListener mOnCellSelected = new OnChangeListener() {
+	private OnCellSelectedListener mOnCellSelected = new OnCellSelectedListener() {
 		@Override
-		public void onChange(int changeType, Cell cell) {
+		public void onCellSelected(Cell cell) {
 			if (mActiveMethodIndex != -1 && mInputMethods != null) {
 				mInputMethods.get(mActiveMethodIndex).onCellSelected(cell);
 			}

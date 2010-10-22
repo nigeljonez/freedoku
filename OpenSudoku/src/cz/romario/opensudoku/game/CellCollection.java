@@ -27,14 +27,15 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.regex.Pattern;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 /**
  * Collection of sudoku cells. This class in fact represents one sudoku board (9x9).
  * 
  * @author romario
  *
  */
-// TODO: prejmenovat na model
-// TODO: pokusit se rozsekat do mensich trid
 public class CellCollection {
 	
 	public static final int SUDOKU_SIZE = 9;
@@ -60,17 +61,9 @@ public class CellCollection {
 	private CellGroup[] mRows;
 	private CellGroup[] mColumns;
 	
-	private Cell mSelectedCell;
-	
 	private boolean mOnChangeEnabled = true;
 
-	public static final int CHANGE_TYPE_VALUE = 0x1;
-	public static final int CHANGE_TYPE_NOTE = 0x10;
-	public static final int CHANGE_TYPE_SELECTION = 0x100;
-	public static final int CHANGE_TYPE_EDITABLE = 0x1000;
-	public static final int CHANGE_TYPE_ALL = 0x1111;
-	
-	private final List<RegisteredOnChangeListener> mChangeListeners = new ArrayList<RegisteredOnChangeListener>();
+	private final List<OnChangeListener> mChangeListeners = new ArrayList<OnChangeListener>();
 	
 	/**
 	 * Creates empty sudoku.
@@ -155,19 +148,6 @@ public class CellCollection {
 		return mCells[rowIndex][colIndex];
 	}
 	
-	public Cell getSelectedCell() {
-		return mSelectedCell;
-	}
-	
-	public void setSelectedCell(Cell cell) {
-		mSelectedCell = cell;
-		onChange(CHANGE_TYPE_SELECTION, cell);
-	}
-	
-	public void selectCell(int rowIndex, int colIndex) {
-		setSelectedCell(getCell(rowIndex, colIndex));
-	}
-	
 	public void markAllCellsAsValid() {
 		mOnChangeEnabled = false;
 		for (int r=0; r<SUDOKU_SIZE; r++)
@@ -178,11 +158,9 @@ public class CellCollection {
 			}
 		}
 		mOnChangeEnabled = true;
-		// TODO: validace pujde pryc
-		//onChange();
+		onChange();
 	}
 	
-	// TODO: pryc s timhle
 	/**
 	 * Validates numbers in collection according to the sudoku rules. Cells with invalid
 	 * values are marked - you can use getInvalid method of cell to find out whether cell
@@ -216,8 +194,7 @@ public class CellCollection {
 		}
 		
 		mOnChangeEnabled = true;
-		// TODO: validace pujde pryc
-		//onChange();
+		onChange();
 
 		return valid;
 	}
@@ -341,7 +318,7 @@ public class CellCollection {
 	
 	/**
 	 * Creates instance from given string (string which has been 
-	 * created by {@link #serialize(StringBuilder)} or {@linkSelection #serialize()} method).
+	 * created by {@link #serialize(StringBuilder)} or {@link #serialize()} method).
 	 * earlier.
 	 * 
 	 * @param note
@@ -441,24 +418,15 @@ public class CellCollection {
 		}
 	}
 	
-	/**
-	 * Adds listener, which will be notified when something changes.
-	 * 
-	 * @param changeTypeMask Which types of changes you are interested in.
-	 * @param listener
-	 */
-	public void addOnChangeListener(int changeTypeMask, OnChangeListener listener) {
+	public void addOnChangeListener(OnChangeListener listener) {
 		if (listener == null) {
 			throw new IllegalArgumentException("The listener is null.");
 		}
-		
-		RegisteredOnChangeListener rListener = new RegisteredOnChangeListener(changeTypeMask, listener);
-		
 		synchronized (mChangeListeners) {
-			if (mChangeListeners.contains(rListener)) {
+			if (mChangeListeners.contains(listener)) {
 				throw new IllegalStateException("Listener " + listener + "is already registered.");
 			}
-			mChangeListeners.add(rListener);
+			mChangeListeners.add(listener);
 		}
 	}
 	
@@ -466,14 +434,11 @@ public class CellCollection {
 		if (listener == null) {
 			throw new IllegalArgumentException("The listener is null.");
 		}
-		
-		RegisteredOnChangeListener rListener = new RegisteredOnChangeListener(listener);
-		
 		synchronized (mChangeListeners) {
-			if (!mChangeListeners.contains(rListener)) {
+			if (!mChangeListeners.contains(listener)) {
 				throw new IllegalStateException("Listener " + listener + " was not registered.");
 			}
-			mChangeListeners.remove(rListener);
+			mChangeListeners.remove(listener);
 		}
 	}
 	
@@ -502,11 +467,11 @@ public class CellCollection {
 	/** 
 	 * Notify all registered listeners that something has changed.
 	 */
-	protected void onChange(int changeType, Cell cell) {
+	protected void onChange() {
 		if (mOnChangeEnabled) {
 			synchronized (mChangeListeners) {
-				for (RegisteredOnChangeListener l : mChangeListeners) {
-					l.onChange(changeType, cell);
+				for (OnChangeListener l : mChangeListeners) {
+					l.onChange();
 				}
 			}
 		}
@@ -514,51 +479,8 @@ public class CellCollection {
 	
 	public interface OnChangeListener {
 		/**
-		 * Called when something in cell's collection changes.
-		 * 
-		 * @param changeType Type of change (see CHANGE_TYPE_* constants).
-		 * @param cell Cell affected by change.
+		 * Called when anything in the collection changes (cell's value, note, etc.)
 		 */
-		void onChange(int changeType, Cell cell);
-	}
-	
-	private static class RegisteredOnChangeListener {
-		private int changeTypeMask;
-		private OnChangeListener listener;
-		
-		public RegisteredOnChangeListener(OnChangeListener listener) {
-			this.listener = listener;
-		}
-		
-		public RegisteredOnChangeListener(int changeTypeMask, OnChangeListener listener) {
-			this.changeTypeMask = changeTypeMask;
-			this.listener = listener;
-		}
-		
-		public void onChange(int changeType, Cell cell) {
-			if ((changeType & changeTypeMask) != 0) {
-				listener.onChange(changeType, cell);
-			}
-		}
-		
-		// TODO: staci tohle?
-		@Override
-		public boolean equals(Object o) {
-			if (o instanceof RegisteredOnChangeListener) {
-				RegisteredOnChangeListener other = (RegisteredOnChangeListener)o;
-				return listener == other.listener;
-			}
-			return false;
-		}
-		
-		@Override
-		public int hashCode() {
-			return listener.hashCode();
-		}
-	}
-	
-	// for unit tests only
-	int getListenerCount() {
-		return mChangeListeners.size();
+		void onChange();
 	}
 }

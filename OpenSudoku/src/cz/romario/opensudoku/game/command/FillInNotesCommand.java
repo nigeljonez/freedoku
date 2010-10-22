@@ -4,32 +4,59 @@ import java.util.ArrayList;
 import java.util.List;
 
 import android.os.Bundle;
+import android.util.Log;
+
 import cz.romario.opensudoku.game.Cell;
 import cz.romario.opensudoku.game.CellCollection;
 import cz.romario.opensudoku.game.CellGroup;
 import cz.romario.opensudoku.game.CellNote;
-import cz.romario.opensudoku.game.SudokuGame;
 
-public class FillInNotesCommand implements Command {
+public class FillInNotesCommand extends AbstractCellCommand {
 
-	private CellCollection mCells; 
 	private List<NoteEntry> mOldNotes = new ArrayList<NoteEntry>();
 	
-	FillInNotesCommand() {
-		
+	public FillInNotesCommand() {
 	}
-	
-	public FillInNotesCommand(CellCollection cells) {
-		mCells = cells;
-	}
-	
-	
+
+    @Override
+    void saveState(Bundle outState) {
+            int[] rows = new int[mOldNotes.size()];
+            int[] cols = new int[mOldNotes.size()];
+            String[] notes = new String[mOldNotes.size()];
+            
+            int i = 0;
+            for (NoteEntry ne : mOldNotes) {
+                    rows[i] = ne.rowIndex;
+                    cols[i] = ne.colIndex;
+                    notes[i] = ne.note.serialize();
+                    i++;
+            }
+            
+            outState.putIntArray("rows", rows);
+            outState.putIntArray("cols", cols);
+            outState.putStringArray("notes", notes);
+    }
+
+    @Override
+    void restoreState(Bundle inState) {
+            int[] rows = inState.getIntArray("rows");
+            int[] cols = inState.getIntArray("cols");
+            String[] notes = inState.getStringArray("notes");
+            
+            for (int i = 0; i < rows.length; i++) {
+                    mOldNotes.add(new NoteEntry(rows[i], cols[i], CellNote
+                                    .deserialize(notes[i])));
+            }
+    }
+
 	@Override
-	public void execute() {
+	void execute() {
+		CellCollection cells = getCells();
+		
 		mOldNotes.clear();
 		for (int r = 0; r < CellCollection.SUDOKU_SIZE; r++) {
 			for (int c = 0; c < CellCollection.SUDOKU_SIZE; c++) {
-				Cell cell = mCells.getCell(r, c);
+				Cell cell = cells.getCell(r, c);
 				mOldNotes.add(new NoteEntry(r, c, cell.getNote()));
 				cell.setNote(new CellNote());
 				
@@ -46,9 +73,11 @@ public class FillInNotesCommand implements Command {
 	}
 
 	@Override
-	public void undo() {
+	void undo() {
+		CellCollection cells = getCells();
+
 		for (NoteEntry ne : mOldNotes) {
-			mCells.getCell(ne.rowIndex, ne.colIndex).setNote(ne.note);
+			cells.getCell(ne.rowIndex, ne.colIndex).setNote(ne.note);
 		}
 	}
 	
@@ -64,37 +93,4 @@ public class FillInNotesCommand implements Command {
 		}
 		
 	}
-
-	@Override
-	public void restoreState(Bundle state, SudokuGame game) {
-		mCells = game.getCells();
-		
-		int[] rows = state.getIntArray("rows");
-		int[] cols = state.getIntArray("cols");
-		String[] notes = state.getStringArray("notes");
-		
-		for (int i = 0; i < rows.length; i++) {
-			mOldNotes.add(new NoteEntry(rows[i], cols[i], CellNote
-					.deserialize(notes[i])));
-		}
-	}
-
-	@Override
-	public void saveState(Bundle outState) {
-		int[] rows = new int[mOldNotes.size()];
-		int[] cols = new int[mOldNotes.size()];
-		String[] notes = new String[mOldNotes.size()];
-		
-		int i = 0;
-		for (NoteEntry ne : mOldNotes) {
-			rows[i] = ne.rowIndex;
-			cols[i] = ne.colIndex;
-			notes[i] = ne.note.serialize();
-		}
-		
-		outState.putIntArray("rows", rows);
-		outState.putIntArray("cols", cols);
-		outState.putStringArray("notes", notes);
-	}
-
 }

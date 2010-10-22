@@ -20,7 +20,6 @@
 
 package cz.romario.opensudoku.game.command;
 
-import cz.romario.opensudoku.game.SudokuGame;
 import android.os.Bundle;
 
 /**
@@ -29,16 +28,36 @@ import android.os.Bundle;
  * @author romario
  *
  */
-public interface Command {
+public abstract class AbstractCommand {
+	
+	public static AbstractCommand newInstance(String commandClass) {
+		if (commandClass.equals(ClearAllNotesCommand.class.getSimpleName())) {
+			return new ClearAllNotesCommand();
+		} else if (commandClass.equals(EditCellNoteCommand.class.getSimpleName())) {
+			return new EditCellNoteCommand();
+		} else if (commandClass.equals(FillInNotesCommand.class.getSimpleName())) {
+			return new FillInNotesCommand();
+		} else if (commandClass.equals(SetCellValueCommand.class.getSimpleName())) {
+			return new SetCellValueCommand();
+		} else {
+			throw new IllegalArgumentException(String.format("Unknown command class '%s'.", commandClass));
+		}
+	}
+	
+	public String getCommandClass() {
+		return getClass().getSimpleName();
+	}
+	
 	/**
 	 * Executes the command.
 	 */
-	void execute();
+	abstract void execute();
 	/**
 	 * Undo this command.
 	 */
-	void undo();
+	abstract void undo();
 	
-	void restoreState(Bundle state, SudokuGame game);
-	void saveState(Bundle outState);
+	abstract void saveState(Bundle outState);
+	
+	abstract void restoreState(Bundle inState);
 }

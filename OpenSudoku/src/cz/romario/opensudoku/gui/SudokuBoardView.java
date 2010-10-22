@@ -22,6 +22,12 @@ package cz.romario.opensudoku.gui;
 
 import java.util.Collection;
 
+import cz.romario.opensudoku.R;
+import cz.romario.opensudoku.game.Cell;
+import cz.romario.opensudoku.game.CellCollection;
+import cz.romario.opensudoku.game.CellNote;
+import cz.romario.opensudoku.game.SudokuGame;
+import cz.romario.opensudoku.game.CellCollection.OnChangeListener;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
@@ -31,12 +37,6 @@ import android.util.AttributeSet;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
-import cz.romario.opensudoku.R;
-import cz.romario.opensudoku.game.Cell;
-import cz.romario.opensudoku.game.CellCollection;
-import cz.romario.opensudoku.game.CellNote;
-import cz.romario.opensudoku.game.SudokuGame;
-import cz.romario.opensudoku.game.CellCollection.OnChangeListener;
 
 /**
  *  Sudoku board widget.
@@ -58,6 +58,8 @@ public class SudokuBoardView extends View {
 	private float mCellHeight;
 	
 	private Cell mTouchedCell;
+	// TODO: should I synchronize access to mSelectedCell?
+	private Cell mSelectedCell;
 	private boolean mReadonly = false;
 	private boolean mHighlightWrongVals = true;
 	private boolean mHighlightTouchedCell = true;
@@ -67,6 +69,7 @@ public class SudokuBoardView extends View {
 	private CellCollection mCells;
 	
 	private OnCellTappedListener mOnCellTappedListener;
+	private OnCellSelectedListener mOnCellSelectedListener;
 
 	private Paint mLinePaint;
 	private Paint mSectorLinePaint;
@@ -216,18 +219,16 @@ public class SudokuBoardView extends View {
 		
 		if (mCells != null) {
 			if (!mReadonly) {
-				mCells.selectCell(0, 0); // first cell will be selected by default
+				mSelectedCell = mCells.getCell(0, 0); // first cell will be selected by default
+				onCellSelected(mSelectedCell);
 			}
 			
-			mCells.addOnChangeListener(CellCollection.CHANGE_TYPE_ALL,
-					new OnChangeListener() {
-
-					@Override
-						public void onChange(int changeType, Cell cell) {
-							postInvalidate();
-						}
-
-					});
+			mCells.addOnChangeListener(new OnChangeListener() {
+				@Override
+				public void onChange() {
+					postInvalidate();
+				}
+			});
 		}
 		
 		postInvalidate();
@@ -235,6 +236,10 @@ public class SudokuBoardView extends View {
 	
 	public CellCollection getCells() {
 		return mCells;
+	}
+	
+	public Cell getSelectedCell() {
+		return mSelectedCell;
 	}
 	
 	public void setReadOnly(boolean readonly) {
@@ -286,9 +291,26 @@ public class SudokuBoardView extends View {
 		}
 	}
 	
+	/**
+	 * Registers callback which will be invoked when cell is selected. Cell selection
+	 * can change without user interaction.
+	 * 
+	 * @param l
+	 */
+	public void setOnCellSelectedListener(OnCellSelectedListener l) {
+		mOnCellSelectedListener = l;
+	}
+	
 	public void hideTouchedCellHint() {
 		mTouchedCell = null;
 		postInvalidate();
+	}
+	
+	
+	protected void onCellSelected(Cell cell) {
+		if (mOnCellSelectedListener != null) {
+			mOnCellSelectedListener.onCellSelected(cell);
+		}
 	}
 
 	@Override
@@ -450,10 +472,9 @@ public class SudokuBoardView extends View {
 			}
 			
 			// highlight selected cell
-			Cell selectedCell = mCells.getSelectedCell();
-			if (!mReadonly && selectedCell != null) {
-				cellLeft = Math.round(selectedCell.getColumnIndex() * mCellWidth) + paddingLeft;
-				cellTop = Math.round(selectedCell.getRowIndex() * mCellHeight) + paddingTop;
+			if (!mReadonly && mSelectedCell != null) {
+				cellLeft = Math.round(mSelectedCell.getColumnIndex() * mCellWidth) + paddingLeft;
+				cellTop = Math.round(mSelectedCell.getRowIndex() * mCellHeight) + paddingTop;
 				canvas.drawRect(
 						cellLeft, cellTop, 
 						cellLeft + mCellWidth, cellTop + mCellHeight,
@@ -518,12 +539,12 @@ public class SudokuBoardView extends View {
 				mTouchedCell = getCellAtPoint(x, y);
 				break;
 			case MotionEvent.ACTION_UP:
-				Cell selectedCell = getCellAtPoint(x, y);
+				mSelectedCell = getCellAtPoint(x, y);
 				invalidate(); // selected cell has changed, update board as soon as you can
 				
-				if (selectedCell != null) {
-					onCellTapped(selectedCell);
-					mCells.setSelectedCell(selectedCell);
+				if (mSelectedCell != null) {
+					onCellTapped(mSelectedCell);
+					onCellSelected(mSelectedCell);
 				}
 				
 				if (mAutoHideTouchedCellHint) {
@@ -555,33 +576,27 @@ public class SudokuBoardView extends View {
 				case KeyEvent.KEYCODE_0:
 				case KeyEvent.KEYCODE_SPACE:
 				case KeyEvent.KEYCODE_DEL:
-				{
-					Cell selectedCell = mCells.getSelectedCell();
 					// clear value in selected cell
 					// TODO: I'm not really sure that this is thread-safe
-					if (selectedCell != null) {
+					if (mSelectedCell != null) {
 						if (event.isShiftPressed() || event.isAltPressed()) {
-							setCellNote(selectedCell, CellNote.EMPTY);
+							setCellNote(mSelectedCell, CellNote.EMPTY);
 						} else {
-							setCellValue(selectedCell, 0);
+							setCellValue(mSelectedCell, 0);
 							moveCellSelectionRight();
 						}
 					}
 					return true;
-				}
 				case KeyEvent.KEYCODE_DPAD_CENTER:
-				{
-					Cell selectedCell = mCells.getSelectedCell();
-					if (selectedCell != null) {
-						onCellTapped(selectedCell);
+					if (mSelectedCell != null) {
+						onCellTapped(mSelectedCell);
 					}
 					return true;
-				}
 			}
 			
 			if (keyCode >= KeyEvent.KEYCODE_1 && keyCode <= KeyEvent.KEYCODE_9) {
 				int selNumber = keyCode - KeyEvent.KEYCODE_0;
-				Cell cell = mCells.getSelectedCell();
+				Cell cell = mSelectedCell;
 				
 				if (event.isShiftPressed() || event.isAltPressed()) {
 					// add or remove number in cell's note
@@ -606,7 +621,7 @@ public class SudokuBoardView extends View {
 	 */
 	public void moveCellSelectionRight() {
 		if (!moveCellSelection(1, 0)) {
-			int selRow = mCells.getSelectedCell().getRowIndex();
+			int selRow = mSelectedCell.getRowIndex();
 			selRow++;
 			if (!moveCellSelectionTo(selRow, 0)) {
 				moveCellSelectionTo(0, 0);
@@ -647,10 +662,9 @@ public class SudokuBoardView extends View {
 		int newRow = 0;
 		int newCol = 0;
 		
-		Cell selectedCell = mCells.getSelectedCell();
-		if (selectedCell != null) {
-			newRow = selectedCell.getRowIndex() + vy;
-			newCol = selectedCell.getColumnIndex() + vx;
+		if (mSelectedCell != null) {
+			newRow = mSelectedCell.getRowIndex() + vy;
+			newCol = mSelectedCell.getColumnIndex() + vx;
 		}
 		
 		return moveCellSelectionTo(newRow, newCol);
@@ -667,7 +681,10 @@ public class SudokuBoardView extends View {
 	private boolean moveCellSelectionTo(int row, int col) {
 		if(col >= 0 && col < CellCollection.SUDOKU_SIZE 
 				&& row >= 0 && row < CellCollection.SUDOKU_SIZE) {
-			mCells.selectCell(row, col);
+			mSelectedCell = mCells.getCell(row, col);
+			onCellSelected(mSelectedCell);
+			
+			postInvalidate();
 			return true;
 		}
 		
@@ -705,6 +722,16 @@ public class SudokuBoardView extends View {
 	 */
 	public interface OnCellTappedListener {
 		void onCellTapped(Cell cell);
+	}
+	
+	/**
+	 * Occurs when user selects the cell.
+	 * 
+	 * @author romario
+	 *
+	 */
+	public interface OnCellSelectedListener {
+		void onCellSelected(Cell cell);
 	}
 
 //	private String getMeasureSpecModeString(int mode) {

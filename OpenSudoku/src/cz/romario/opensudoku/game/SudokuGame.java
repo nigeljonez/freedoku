@@ -20,10 +20,11 @@
 
 package cz.romario.opensudoku.game;
 
+import android.os.Bundle;
 import android.os.SystemClock;
 import cz.romario.opensudoku.game.command.ClearAllNotesCommand;
-import cz.romario.opensudoku.game.command.Command;
-import cz.romario.opensudoku.game.command.CommandInvoker;
+import cz.romario.opensudoku.game.command.AbstractCommand;
+import cz.romario.opensudoku.game.command.CommandStack;
 import cz.romario.opensudoku.game.command.EditCellNoteCommand;
 import cz.romario.opensudoku.game.command.FillInNotesCommand;
 import cz.romario.opensudoku.game.command.SetCellValueCommand;
@@ -43,8 +44,7 @@ public class SudokuGame {
 	private CellCollection mCells;
 	
 	private OnPuzzleSolvedListener mOnPuzzleSolvedListener;
-	 
-	private CommandInvoker mCommandInvoker;
+	private CommandStack mCommandStack;
 	// Time when current activity has become active. 
 	private long mActiveFromTime = -1; 
 
@@ -62,9 +62,35 @@ public class SudokuGame {
 		mCreated = 0;
 		
 		mState = GAME_STATE_NOT_STARTED;
-		
-		mCommandInvoker = new CommandInvoker(this);
 	}
+	
+	public void saveState(Bundle outState) {
+		outState.putLong("id", mId);
+		outState.putString("note", mNote);
+		outState.putLong("created", mCreated);
+		outState.putInt("state", mState);
+		outState.putLong("time", mTime);
+		outState.putLong("lastPlayed", mLastPlayed);
+		outState.putString("cells", mCells.serialize());
+		
+		mCommandStack.saveState(outState);
+	}
+	
+    public void restoreState(Bundle inState) {
+    	mId = inState.getLong("id");
+    	mNote = inState.getString("note");
+    	mCreated = inState.getLong("created");
+    	mState = inState.getInt("state");
+    	mTime = inState.getLong("time");
+    	mLastPlayed = inState.getLong("lastPlayed");
+    	mCells = CellCollection.deserialize(inState.getString("cells"));
+    	
+    	mCommandStack = new CommandStack(mCells);
+    	mCommandStack.restoreState(inState);
+
+    	validate();
+    }
+
 	
 	public void setOnPuzzleSolvedListener(OnPuzzleSolvedListener l) {
 		mOnPuzzleSolvedListener = l;
@@ -72,7 +98,6 @@ public class SudokuGame {
 	
 	public void setNote(String note) {
 		mNote = note;
-		
 	}
 
 	public String getNote() {
@@ -126,6 +151,7 @@ public class SudokuGame {
 	public void setCells(CellCollection cells) {
 		mCells = cells;
 		validate();
+		mCommandStack = new CommandStack(mCells);
 	}
 	
 	public CellCollection getCells() {
@@ -147,10 +173,16 @@ public class SudokuGame {
 	 * @param value
 	 */
 	public void setCellValue(Cell cell, int value) {
+		if (cell == null) {
+			throw new IllegalArgumentException("Cell cannot be null.");
+		}
+		if (value < 0 || value > 9) {
+			throw new IllegalArgumentException("Value must be between 0-9.");
+		}
+		
 		if (cell.isEditable()) {
 			executeCommand(new SetCellValueCommand(cell, value));
 			
-			// TODO: tohle ma probihat v onValueChange modelu
 			validate();
 			if (isCompleted()) {
 				finish();
@@ -168,26 +200,31 @@ public class SudokuGame {
 	 * @param note
 	 */
 	public void setCellNote(Cell cell, CellNote note) {
+		if (cell == null) {
+			throw new IllegalArgumentException("Cell cannot be null.");
+		}
+		if (note == null) {
+			throw new IllegalArgumentException("Note cannot be null.");
+		}
+
 		if (cell.isEditable()) {
 			executeCommand(new EditCellNoteCommand(cell, note));
 		}
 	}
 	
-	private void executeCommand(Command c) {
-		mCommandInvoker.execute(c);
+	private void executeCommand(AbstractCommand c) {
+		mCommandStack.execute(c);
 	}
 	
 	/** 
 	 * Undo last command.
 	 */
 	public void undo() {
-		mCommandInvoker.undo();
-		// TODO: az pujde validace pres onchange, tak tohle nebude treba
-		validate();
+		mCommandStack.undo();
 	}
 	
 	public boolean hasSomethingToUndo() {
-		return mCommandInvoker.hasSomethingToUndo();
+		return mCommandStack.hasSomethingToUndo();
 	}
 	
 	/**
@@ -252,44 +289,20 @@ public class SudokuGame {
 	}
 	
 	public void clearAllNotes() {
-		executeCommand(new ClearAllNotesCommand(mCells));
+		executeCommand(new ClearAllNotesCommand());
 	}
 	
 	/**
 	 * Fills in possible values which can be entered in each cell.
 	 */
 	public void fillInNotes() {
-		executeCommand(new FillInNotesCommand(mCells));
+		executeCommand(new FillInNotesCommand());
 	}
 	
 	public void validate() {
 		mCells.validate();
 	}
-	
-	public CommandInvoker getCommandInvoker() {
-		return mCommandInvoker;
-	}
-	
-//	public void saveState(Bundle outState) {
-//		outState.putLong("id", mId);
-//		outState.putString("note", mNote);
-//		outState.putLong("created", mCreated);
-//		outState.putInt("state", mState);
-//		outState.putLong("time", mTime);
-//		outState.putLong("lastPlayed", mLastPlayed);
-//		outState.putString("cells", mCells.serialize());
-//	}
-//	
-//	public void restoreState(Bundle state) {
-//		mId = state.getLong("id");
-//		mNote = state.getString("note");
-//		mCreated = state.getLong("created");
-//		mState = state.getInt("state");
-//		mTime = state.getLong("time");
-//		mLastPlayed = state.getLong("lastPlayed");
-//		mCells = CellCollection.deserialize(state.getString("cells"));
-//	}
-	
+
 	public interface OnPuzzleSolvedListener
 	{
 		/**

@@ -23,58 +23,51 @@ package cz.romario.opensudoku.game.command;
 import android.os.Bundle;
 import cz.romario.opensudoku.game.Cell;
 import cz.romario.opensudoku.game.CellNote;
-import cz.romario.opensudoku.game.SudokuGame;
 
-public class EditCellNoteCommand implements Command {
+public class EditCellNoteCommand extends AbstractCellCommand {
 
-	private Cell mCell;
+	private int mCellRow;
+	private int mCellColumn;
 	private CellNote mNote;
 	private CellNote mOldNote;
+	
+	public EditCellNoteCommand(Cell cell, CellNote note) {
+		mCellRow = cell.getRowIndex();
+		mCellColumn = cell.getColumnIndex();
+		mNote = note;
+	}
 	
 	EditCellNoteCommand() {
 		
 	}
 	
-	public EditCellNoteCommand(Cell cell, CellNote note) {
-		if (cell == null) {
-			throw new IllegalArgumentException("Cell cannot be null.");
-		}
-		if (note == null) {
-			throw new IllegalArgumentException("Note cannot be null.");
-		}
+	@Override
+	void saveState(Bundle outState) {
+		outState.putInt("cellRow", mCellRow);
+		outState.putInt("cellColumn", mCellColumn);
+		outState.putString("note", mNote.serialize());
+		outState.putString("oldNote", mOldNote.serialize());
+	}
 
-		mCell = cell;
-		mNote = note;
+	@Override
+	void restoreState(Bundle inState) {
+		mCellRow = inState.getInt("cellRow");
+		mCellColumn = inState.getInt("cellColumn");
+		mNote = CellNote.deserialize(inState.getString("note"));
+		mOldNote = CellNote.deserialize(inState.getString("oldNote"));
 	}
 	
 	@Override
-	public void execute() {
-		mOldNote = mCell.getNote();
-		mCell.setNote(mNote);
+	void execute() {
+		Cell cell = getCells().getCell(mCellRow, mCellColumn);
+		mOldNote = cell.getNote();
+		cell.setNote(mNote);
 	}
 
 	@Override
-	public void undo() {
-		mCell.setNote(mOldNote);
-		mCell.select();
-	}
-
-	@Override
-	public void restoreState(Bundle state, SudokuGame game) {
-		int rowIndex = state.getInt("rowIndex");
-		int colIndex = state.getInt("colIndex");
-		mCell = game.getCells().getCell(rowIndex, colIndex);
-		
-		mNote = CellNote.deserialize(state.getString("note"));
-		mOldNote = CellNote.deserialize(state.getString("oldNote"));
-	}
-
-	@Override
-	public void saveState(Bundle outState) {
-		outState.putInt("rowIndex", mCell.getRowIndex());
-		outState.putInt("colIndex", mCell.getColumnIndex());
-		outState.putString("note", mNote.serialize());
-		outState.putString("oldNote", mOldNote.serialize());
+	void undo() {
+		Cell cell = getCells().getCell(mCellRow, mCellColumn);
+		cell.setNote(mOldNote);
 	}
 
 }
