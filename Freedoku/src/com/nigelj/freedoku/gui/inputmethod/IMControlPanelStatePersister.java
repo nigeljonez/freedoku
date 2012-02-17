@@ -25,6 +25,7 @@ public class IMControlPanelStatePersister {
 		// save state of control panel itself
 		StateBundle cpState = new StateBundle(mPreferences, PREFIX + ".", true);
 		cpState.putInt("activeMethodIndex", controlPanel.getActiveMethodIndex());
+		cpState.putBoolean("activeMethodLocked", controlPanel.getActiveMethodLock());
 		cpState.commit();
 		
 		// save state of all input methods
@@ -42,6 +43,8 @@ public class IMControlPanelStatePersister {
 		if (methodId != -1) {
 			controlPanel.activateInputMethod(methodId);
 		}
+		
+		controlPanel.setActiveMethodLock(cpState.getBoolean("activeMethodLocked", false));
 		
 		// restore state of all input methods
 		for (InputMethod im : controlPanel.getInputMethods()) {

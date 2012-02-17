@@ -25,6 +25,8 @@ import java.util.Collections;
 import java.util.List;
 
 import android.content.Context;
+import android.graphics.Color;
+import android.graphics.LightingColorFilter;
 import android.util.AttributeSet;
 import android.view.View;
 import android.widget.Button;
@@ -55,6 +57,7 @@ public class IMControlPanel extends LinearLayout {
 	
 	private List<InputMethod> mInputMethods = new ArrayList<InputMethod>();
 	private int mActiveMethodIndex = -1;
+	private boolean mActiveMethodLocked = false;
 	
 	public IMControlPanel(Context context) {
 		super(context);
@@ -162,6 +165,15 @@ public class IMControlPanel extends LinearLayout {
 		activateInputMethod(id);
 	}
 	
+	public void setActiveMethodLock(boolean newState) {
+		InputMethod im = getInputMethod(mActiveMethodIndex);
+		View switchModeButton = im.getInputMethodView().findViewById(R.id.switch_input_mode);
+		switchModeButton.getBackground().setColorFilter(
+				new LightingColorFilter((newState ? Color.RED : Color.CYAN),0));
+		
+		mActiveMethodLocked = newState;
+	}
+	
 	/**
 	 * Returns input method object by its ID (see INPUT_METHOD_* constants).
 	 * 
@@ -181,6 +193,10 @@ public class IMControlPanel extends LinearLayout {
 	
 	public int getActiveMethodIndex() {
 		return mActiveMethodIndex;
+	}
+	
+	public boolean getActiveMethodLock() {
+		return mActiveMethodLocked;
 	}
 	
 	public void showHelpForActiveMethod() {
@@ -239,6 +255,7 @@ public class IMControlPanel extends LinearLayout {
 			View controlPanel = im.getInputMethodView();
 			Button switchModeButton = (Button)controlPanel.findViewById(R.id.switch_input_mode);
 			switchModeButton.setOnClickListener(mSwitchModeListener);
+			switchModeButton.setOnLongClickListener(mSwitchModeLockListener);
 			this.addView(controlPanel, LayoutParams.FILL_PARENT, LayoutParams.FILL_PARENT);
 		}
 	}
@@ -264,7 +281,17 @@ public class IMControlPanel extends LinearLayout {
 	private OnClickListener mSwitchModeListener = new OnClickListener() {
 		@Override
 		public void onClick(View v) {
-			activateNextInputMethod();
+			if (!mActiveMethodLocked) {
+				activateNextInputMethod();
+			}
+		}
+	};
+	
+	private OnLongClickListener mSwitchModeLockListener = new OnLongClickListener() {
+		@Override
+		public boolean onLongClick(View v) {
+			setActiveMethodLock((mActiveMethodLocked ? false : true));
+			return true;
 		}
 	};
 	
