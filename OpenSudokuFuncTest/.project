@@ -3,7 +3,7 @@
 	<name>OpenSudokuFuncTest</name>
 	<comment></comment>
 	<projects>
-		<project>OpenSudoku</project>
+		<project>Freedoku</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
